@@ -235,7 +235,7 @@ function saveCustomer() {
     DB.customers.push({ id: DB.nextId.customers++, name, phone, email, address: addr, gst, credit });
     showAlert('Customer added!');
   }
-
+  saveDB();
   closeModal('customerModal');
   renderCustomers();
   renderStats();
@@ -260,7 +260,9 @@ function deleteCustomer(id) {
   // SQL: DELETE FROM customers WHERE customer_id = id
   const idx = DB.customers.findIndex(c => c.id === id);
   if (idx !== -1) { DB.customers.splice(idx, 1); showAlert('Customer deleted.'); }
-  renderCustomers(); renderStats();
+  saveDB();
+  renderCustomers();
+  renderStats();
 }
 
 function viewCustomer(id) {

@@ -242,6 +242,7 @@ function saveProduct() {
     showAlert('Product added successfully!');
   }
 
+  saveDB();
   closeModal('productModal');
   renderProducts();
 }
@@ -273,6 +274,7 @@ function deleteProduct(id) {
   if (idx !== -1) {
     DB.products.splice(idx, 1);
     showAlert('Product deleted.');
+    saveDB();
     renderProducts();
   }
 }

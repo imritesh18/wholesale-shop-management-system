@@ -12,7 +12,7 @@
 //  In production: replace fetch() calls to your backend API
 // ============================================================
 
-const DB = {
+let DB = {
   categories: [
     { id: 1, name: 'Groceries' },
     { id: 2, name: 'Electronics' },
@@ -59,6 +59,26 @@ const DB = {
 
   nextId: { products: 17, customers: 6, bills: 7 }
 };
+
+
+function saveDB() {
+  localStorage.setItem('wholesaleDB', JSON.stringify(DB));
+}
+
+
+// ===============================
+// LOCAL STORAGE SUPPORT
+// ===============================
+
+const savedDB = localStorage.getItem('wholesaleDB');
+
+if (savedDB) {
+  DB = JSON.parse(savedDB);
+} else {
+  saveDB();
+}
+
+
 
 // ============================================================
 //  UTILITY FUNCTIONS
