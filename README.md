@@ -234,20 +234,15 @@ See [`docs/interview_qa.md`](docs/interview_qa.md) for 20+ common interview ques
 
 ## 👨‍💻 Author
 
-**[Your Name]**
+**[Ritesh]**
 BTech Computer Science Engineering
-[Your College Name], [Year]
+[NIET], [2027]
 
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your LinkedIn](https://linkedin.com/in/yourprofile)
-- Email: your.email@gmail.com
-
----
-
-## 📄 License
-
-This project is open source and available under the [MIT License](LICENSE).
+- GitHub: https://github.com/imritesh18
+- LinkedIn: https://www.linkedin.com/in/thakran-ritesh/
+- Email: ritesh.thakran18@gmail.com
 
 ---
+
 
 > ⭐ If this project helped you, please give it a star on GitHub!
