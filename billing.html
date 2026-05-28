@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Billing | Wholesale Shop Management</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    @media print {
+      body { background: white !important; color: black !important; }
+      .sidebar, .topbar, .no-print { display: none !important; }
+      .main-content { margin-left: 0 !important; }
+      .bill-receipt { border: 1px solid #ccc; color: black; background: white; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">🏪</div>
+    <h2>ShopDesk Pro</h2>
+    <small>Wholesale Manager</small>
+  </div>
+  <ul class="sidebar-nav">
+    <li class="nav-label">Main</li>
+    <li><a href="index.html"><span class="nav-icon">📊</span> Dashboard</a></li>
+    <li class="nav-label">Manage</li>
+    <li><a href="products.html"><span class="nav-icon">📦</span> Products</a></li>
+    <li><a href="customers.html"><span class="nav-icon">👥</span> Customers</a></li>
+    <li><a href="inventory.html"><span class="nav-icon">🗄️</span> Inventory</a></li>
+    <li><a href="billing.html" class="active"><span class="nav-icon">🧾</span> Billing</a></li>
+  </ul>
+  <div class="sidebar-footer">v1.0 &nbsp;|&nbsp; MySQL + HTML</div>
+</nav>
+
+<div class="main-content">
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <button class="hamburger" id="hamburger">☰</button>
+      <h1>🧾 Billing System</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="currentDate"></span>
+      <button class="btn btn-primary no-print" onclick="openModal('newBillModal')">
+        ＋ New Bill
+      </button>
+    </div>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="alert" id="alertBox"></div>
+
+    <!-- STATS ROW -->
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
+      <div class="stat-card">
+        <div class="stat-icon amber">🧾</div>
+        <div class="stat-info"><h3 id="statTotal">0</h3><p>Total Bills</p></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info"><h3 id="statPaid">₹0</h3><p>Paid Revenue</p></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">⏳</div>
+        <div class="stat-info"><h3 id="statDues">₹0</h3><p>Pending Dues</p></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue">📊</div>
+        <div class="stat-info"><h3 id="statAvg">₹0</h3><p>Avg Bill Value</p></div>
+      </div>
+    </div>
+
+    <!-- ALL BILLS TABLE -->
+    <div class="table-wrapper no-print">
+      <div class="table-controls">
+        <h2 style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--amber);">All Bills</h2>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+          <div class="search-wrap">
+            <input type="text" class="search-input" id="billSearch" placeholder="Search customer..." />
+          </div>
+          <select id="statusFilter" style="background:var(--navy);border:1px solid var(--navy-light);color:var(--white);padding:9px 14px;border-radius:8px;font-size:13px;">
+            <option value="">All Status</option>
+            <option value="Paid">Paid</option>
+            <option value="Unpaid">Unpaid</option>
+            <option value="Partial">Partial</option>
+          </select>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Bill #</th>
+            <th>Customer</th>
+            <th>Date</th>
+            <th>Subtotal</th>
+            <th>Discount</th>
+            <th>GST (18%)</th>
+            <th>Final Amount</th>
+            <th>Mode</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="billTableBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     NEW BILL MODAL
+     ============================================================ -->
+<div class="modal-overlay" id="newBillModal">
+  <div class="modal" style="max-width:800px;">
+    <div class="modal-header">
+      <h3>Create New Bill</h3>
+      <button class="modal-close" onclick="closeModal('newBillModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- STEP 1: Bill Header -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
+        <div class="form-group">
+          <label>Customer *</label>
+          <select id="bCustomer"></select>
+        </div>
+        <div class="form-group">
+          <label>Bill Date *</label>
+          <input type="date" id="bDate" />
+        </div>
+        <div class="form-group">
+          <label>Payment Mode</label>
+          <select id="bMode">
+            <option value="Cash">Cash</option>
+            <option value="Credit">Credit</option>
+            <option value="Online">Online</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Discount (%)</label>
+          <input type="number" id="bDiscount" value="0" min="0" max="50" step="0.5" oninput="recalculate()" />
+        </div>
+        <div class="form-group">
+          <label>GST/Tax (%)</label>
+          <input type="number" id="bTax" value="18" min="0" max="28" step="0.5" oninput="recalculate()" />
+        </div>
+        <div class="form-group">
+          <label>Payment Status</label>
+          <select id="bStatus">
+            <option value="Unpaid">Unpaid</option>
+            <option value="Paid">Paid</option>
+            <option value="Partial">Partial</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- STEP 2: Add Items -->
+      <div style="background:var(--navy);border:1px solid var(--navy-light);border-radius:8px;padding:16px;margin-bottom:16px;">
+        <h4 style="color:var(--amber);margin-bottom:12px;">Add Products to Bill</h4>
+        <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:12px;align-items:end;">
+          <div class="form-group" style="margin:0;">
+            <label>Select Product</label>
+            <select id="addProduct" onchange="updateProductPrice()"></select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Quantity</label>
+            <input type="number" id="addQty" value="1" min="1" />
+          </div>
+          <button class="btn btn-primary" onclick="addItemToCart()" style="height:42px;align-self:end;">Add ➕</button>
+        </div>
+        <div style="margin-top:10px;font-size:13px;color:var(--muted);">
+          Price: <span id="selectedPrice" style="color:var(--amber);">—</span>
+        </div>
+      </div>
+
+      <!-- Cart / Line Items Table -->
+      <div id="cartSection" style="display:none;">
+        <table style="margin-bottom:16px;">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Qty</th>
+              <th>Unit Price</th>
+              <th>Subtotal</th>
+              <th>Remove</th>
+            </tr>
+          </thead>
+          <tbody id="cartBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Totals -->
+      <div style="display:flex;justify-content:flex-end;">
+        <table class="bill-totals" style="width:260px;">
+          <tbody>
+            <tr><td>Subtotal</td><td style="text-align:right;" id="tSubtotal">₹0.00</td></tr>
+            <tr><td>Discount</td><td style="text-align:right;color:var(--green);" id="tDiscount">-₹0.00</td></tr>
+            <tr><td>GST/Tax</td><td style="text-align:right;color:var(--yellow);" id="tTax">+₹0.00</td></tr>
+            <tr class="grand-total">
+              <td><strong>Total</strong></td>
+              <td style="text-align:right;"><strong id="tTotal">₹0.00</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('newBillModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveBill()">🧾 Generate Bill</button>
+    </div>
+  </div>
+</div>
+
+<!-- BILL PREVIEW / PRINT MODAL -->
+<div class="modal-overlay" id="previewModal">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <h3>Bill Preview</h3>
+      <button class="modal-close" onclick="closeModal('previewModal')">✕</button>
+    </div>
+    <div class="modal-body" id="receiptContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('previewModal')">Close</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+/* ── Billing Page Logic ── */
+
+let cartItems = [];  // Holds current bill's line items
+
+// ---- Render billing stats ----
+function renderStats() {
+  const total    = DB.bills.length;
+  const paid     = DB.bills.filter(b => b.status === 'Paid').reduce((s,b) => s + b.final, 0);
+  const dues     = DB.bills.filter(b => b.status !== 'Paid').reduce((s,b) => s + b.final, 0);
+  const avg      = total > 0 ? DB.bills.reduce((s,b) => s + b.final, 0) / total : 0;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statPaid').textContent  = formatCurrency(paid);
+  document.getElementById('statDues').textContent  = formatCurrency(dues);
+  document.getElementById('statAvg').textContent   = formatCurrency(avg);
+}
+
+// ---- Render bills table ----
+function renderBills(filterText = '', filterStatus = '') {
+  let bills = [...DB.bills].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  if (filterStatus) bills = bills.filter(b => b.status === filterStatus);
+  if (filterText) {
+    bills = bills.filter(b =>
+      getCustomerName(b.customerId).toLowerCase().includes(filterText.toLowerCase())
+    );
+  }
+
+  const tbody = document.getElementById('billTableBody');
+  if (!bills.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:28px;">No bills found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = bills.map(b => {
+    const discAmt = b.total * (b.discount / 100);
+    const afterDisc = b.total - discAmt;
+    const taxAmt = afterDisc * (b.tax / 100);
+    return `
+    <tr>
+      <td class="table-id">#${String(b.id).padStart(4,'0')}</td>
+      <td><strong>${getCustomerName(b.customerId)}</strong></td>
+      <td>${formatDate(b.date)}</td>
+      <td>${formatCurrency(b.total)}</td>
+      <td style="color:var(--green);">${b.discount > 0 ? '-' + formatCurrency(discAmt) : '—'}</td>
+      <td style="color:var(--yellow);">+${formatCurrency(taxAmt)}</td>
+      <td style="font-weight:600;">${formatCurrency(b.final)}</td>
+      <td><span class="badge badge-blue">${b.mode}</span></td>
+      <td>${paymentBadge(b.status)}</td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm" onclick="viewBill(${b.id})">👁️ View</button>
+        ${b.status !== 'Paid'
+          ? `<button class="btn btn-edit btn-sm" onclick="markPaid(${b.id})">✅ Mark Paid</button>`
+          : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ---- Populate customer and product selects ----
+function populateSelects() {
+  const custSel = document.getElementById('bCustomer');
+  custSel.innerHTML = DB.customers.map(c =>
+    `<option value="${c.id}">${c.name}</option>`
+  ).join('');
+
+  const prodSel = document.getElementById('addProduct');
+  prodSel.innerHTML = DB.products.map(p =>
+    `<option value="${p.id}" data-price="${p.unitPrice}">${p.name} (${formatCurrency(p.unitPrice)})</option>`
+  ).join('');
+
+  document.getElementById('bDate').value = todayISO();
+  updateProductPrice();
+}
+
+function updateProductPrice() {
+  const sel = document.getElementById('addProduct');
+  const selected = sel.options[sel.selectedIndex];
+  const price = selected ? parseFloat(selected.dataset.price) : 0;
+  document.getElementById('selectedPrice').textContent = formatCurrency(price) + ' per unit';
+}
+
+// ---- Add item to cart ----
+function addItemToCart() {
+  const productId = parseInt(document.getElementById('addProduct').value);
+  const qty = parseInt(document.getElementById('addQty').value) || 1;
+  const product = DB.products.find(p => p.id === productId);
+  if (!product) return;
+
+  // Check if already in cart
+  const existing = cartItems.find(i => i.productId === productId);
+  if (existing) {
+    existing.qty += qty;
+    existing.subtotal = existing.qty * existing.unitPrice;
+  } else {
+    cartItems.push({
+      productId,
+      name:      product.name,
+      qty,
+      unitPrice: product.unitPrice,
+      subtotal:  qty * product.unitPrice
+    });
+  }
+
+  renderCart();
+  recalculate();
+}
+
+// ---- Render cart table ----
+function renderCart() {
+  const section = document.getElementById('cartSection');
+  const tbody   = document.getElementById('cartBody');
+
+  if (cartItems.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  tbody.innerHTML = cartItems.map((item, idx) => `
+    <tr>
+      <td>${item.name}</td>
+      <td>${item.qty} <span style="color:var(--muted);font-size:12px;">units</span></td>
+      <td>${formatCurrency(item.unitPrice)}</td>
+      <td><strong>${formatCurrency(item.subtotal)}</strong></td>
+      <td>
+        <button class="btn btn-danger btn-sm" onclick="removeCartItem(${idx})">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function removeCartItem(idx) {
+  cartItems.splice(idx, 1);
+  renderCart();
+  recalculate();
+}
+
+// ---- Recalculate totals in the form ----
+function recalculate() {
+  const discountPct = parseFloat(document.getElementById('bDiscount').value) || 0;
+  const taxPct      = parseFloat(document.getElementById('bTax').value)      || 18;
+  const totals = calculateBillTotals(cartItems, discountPct, taxPct);
+
+  document.getElementById('tSubtotal').textContent = formatCurrency(totals.subtotal);
+  document.getElementById('tDiscount').textContent = '-' + formatCurrency(totals.discountAmt);
+  document.getElementById('tTax').textContent      = '+' + formatCurrency(totals.taxAmt);
+  document.getElementById('tTotal').textContent    = formatCurrency(totals.finalAmt);
+}
+
+// ---- Save bill ----
+function saveBill() {
+  const customerId  = parseInt(document.getElementById('bCustomer').value);
+  const date        = document.getElementById('bDate').value;
+  const mode        = document.getElementById('bMode').value;
+  const discountPct = parseFloat(document.getElementById('bDiscount').value) || 0;
+  const taxPct      = parseFloat(document.getElementById('bTax').value)      || 18;
+  const status      = document.getElementById('bStatus').value;
+
+  if (!customerId || !date) { showAlert('Please fill all required fields.', 'error'); return; }
+  if (cartItems.length === 0) { showAlert('Add at least one product to the bill.', 'error'); return; }
+
+  const totals = calculateBillTotals(cartItems, discountPct, taxPct);
+
+  // SQL: INSERT INTO bills (...) VALUES (...)
+  const newBill = {
+    id:         DB.nextId.bills++,
+    customerId,
+    date,
+    total:      totals.subtotal,
+    discount:   discountPct,
+    tax:        taxPct,
+    final:      totals.finalAmt,
+    status,
+    mode,
+    items:      [...cartItems]
+  };
+
+  DB.bills.push(newBill);
+
+  // Deduct sold stock from inventory
+  // SQL: UPDATE products SET stock_qty = stock_qty - qty WHERE product_id = ...
+  cartItems.forEach(item => {
+    const p = DB.products.find(p => p.id === item.productId);
+    if (p) p.stock = Math.max(0, p.stock - item.qty);
+  });
+
+  cartItems = [];
+  renderCart();
+  recalculate();
+  closeModal('newBillModal');
+  showAlert('Bill #' + String(newBill.id).padStart(4,'0') + ' created successfully!');
+  renderBills();
+  renderStats();
+
+  // Auto-show preview
+  viewBill(newBill.id);
+}
+
+// ---- View bill receipt ----
+function viewBill(id) {
+  const b = DB.bills.find(b => b.id === id);
+  if (!b) return;
+
+  const customer = DB.customers.find(c => c.id === b.customerId);
+  const discAmt  = b.total * (b.discount / 100);
+  const afterDisc = b.total - discAmt;
+  const taxAmt   = afterDisc * (b.tax / 100);
+
+  const itemsHTML = (b.items || []).map(item => `
+    <tr>
+      <td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);">${item.name}</td>
+      <td style="padding:6px 4px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:center;">${item.qty}</td>
+      <td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);text-align:right;">${formatCurrency(item.unitPrice)}</td>
+      <td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);text-align:right;">${formatCurrency(item.subtotal)}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('receiptContent').innerHTML = `
+    <div class="bill-receipt">
+      <div class="receipt-header">
+        <div style="font-size:24px;margin-bottom:4px;">🏪</div>
+        <h3>ShopDesk Pro</h3>
+        <p style="color:var(--muted);font-size:12px;margin-top:4px;">Wholesale Management System</p>
+        <p style="margin-top:8px;font-size:12px;">
+          Bill No: <strong style="color:var(--amber);">#${String(b.id).padStart(4,'0')}</strong>
+          &nbsp;|&nbsp; Date: <strong>${formatDate(b.date)}</strong>
+        </p>
+      </div>
+
+      <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--navy-light);">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">BILLED TO</div>
+        <strong style="font-size:15px;">${customer ? customer.name : '—'}</strong><br>
+        <span style="font-size:12px;color:var(--muted);">${customer ? customer.phone : ''}</span>
+        ${customer?.gst ? `<br><span style="font-size:11px;color:var(--muted);">GST: ${customer.gst}</span>` : ''}
+      </div>
+
+      <table style="width:100%;margin-bottom:16px;font-size:13px;">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:6px 0;color:var(--amber);border-bottom:1px solid var(--navy-light);">Product</th>
+            <th style="text-align:center;padding:6px 4px;color:var(--amber);border-bottom:1px solid var(--navy-light);">Qty</th>
+            <th style="text-align:right;padding:6px 0;color:var(--amber);border-bottom:1px solid var(--navy-light);">Price</th>
+            <th style="text-align:right;padding:6px 0;color:var(--amber);border-bottom:1px solid var(--navy-light);">Total</th>
+          </tr>
+        </thead>
+        <tbody>${itemsHTML || '<tr><td colspan="4" style="color:var(--muted);padding:10px 0;">No item details available.</td></tr>'}</tbody>
+      </table>
+
+      <table class="bill-totals" style="width:100%;margin-top:8px;">
+        <tbody>
+          <tr><td>Subtotal</td><td style="text-align:right;">${formatCurrency(b.total)}</td></tr>
+          ${b.discount > 0 ? `<tr><td>Discount (${b.discount}%)</td><td style="text-align:right;color:var(--green);">-${formatCurrency(discAmt)}</td></tr>` : ''}
+          <tr><td>GST/Tax (${b.tax}%)</td><td style="text-align:right;color:var(--yellow);">+${formatCurrency(taxAmt)}</td></tr>
+          <tr class="grand-total" style="border-top:1px dashed var(--navy-light);">
+            <td style="padding-top:10px;"><strong>TOTAL AMOUNT</strong></td>
+            <td style="text-align:right;padding-top:10px;font-size:20px;color:var(--amber);">${formatCurrency(b.final)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:20px;padding-top:16px;border-top:1px dashed var(--navy-light);text-align:center;font-size:12px;">
+        <div style="margin-bottom:6px;">
+          Payment: <span class="badge ${b.status==='Paid'?'badge-green':b.status==='Partial'?'badge-yellow':'badge-red'}">${b.status}</span>
+          &nbsp;|&nbsp; Mode: <span class="badge badge-blue">${b.mode}</span>
+        </div>
+        <p style="color:var(--muted);margin-top:8px;">Thank you for your business! 🙏</p>
+      </div>
+    </div>
+  `;
+
+  openModal('previewModal');
+}
+
+// ---- Mark bill as paid ----
+function markPaid(id) {
+  if (!confirm('Mark this bill as Paid?')) return;
+  // SQL: UPDATE bills SET payment_status='Paid' WHERE bill_id = id
+  const bill = DB.bills.find(b => b.id === id);
+  if (bill) { bill.status = 'Paid'; bill.mode = 'Cash'; }
+  showAlert('Bill marked as Paid!');
+  renderBills();
+  renderStats();
+}
+
+// ---- Search & filter ----
+document.getElementById('billSearch').addEventListener('input', e =>
+  renderBills(e.target.value, document.getElementById('statusFilter').value));
+document.getElementById('statusFilter').addEventListener('change', e =>
+  renderBills(document.getElementById('billSearch').value, e.target.value));
+
+// ---- Init ----
+document.addEventListener('DOMContentLoaded', () => {
+  populateSelects();
+  renderBills();
+  renderStats();
+});
+
+// Reset cart when modal opens
+document.querySelector('[onclick="openModal(\'newBillModal\')"]')?.addEventListener('click', () => {
+  cartItems = [];
+  renderCart();
+  recalculate();
+  populateSelects();
+});
+</script>
+</body>
+</html>

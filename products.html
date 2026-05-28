@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Products | Wholesale Shop Management</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">🏪</div>
+    <h2>ShopDesk Pro</h2>
+    <small>Wholesale Manager</small>
+  </div>
+  <ul class="sidebar-nav">
+    <li class="nav-label">Main</li>
+    <li><a href="index.html"><span class="nav-icon">📊</span> Dashboard</a></li>
+    <li class="nav-label">Manage</li>
+    <li><a href="products.html" class="active"><span class="nav-icon">📦</span> Products</a></li>
+    <li><a href="customers.html"><span class="nav-icon">👥</span> Customers</a></li>
+    <li><a href="inventory.html"><span class="nav-icon">🗄️</span> Inventory</a></li>
+    <li><a href="billing.html"><span class="nav-icon">🧾</span> Billing</a></li>
+  </ul>
+  <div class="sidebar-footer">v1.0 &nbsp;|&nbsp; MySQL + HTML</div>
+</nav>
+
+<div class="main-content">
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <button class="hamburger" id="hamburger">☰</button>
+      <h1>📦 Product Management</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="currentDate"></span>
+    </div>
+  </header>
+
+  <div class="page-wrapper">
+
+    <!-- Alert Box -->
+    <div class="alert" id="alertBox"></div>
+
+    <!-- TABLE SECTION -->
+    <div class="table-wrapper">
+      <div class="table-controls">
+        <div class="section-header" style="margin-bottom:0;">
+          <h2>All Products</h2>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div class="search-wrap">
+            <input type="text" class="search-input" id="productSearch" placeholder="Search products..." />
+          </div>
+          <!-- Filter by Category -->
+          <select id="categoryFilter" style="background:var(--navy);border:1px solid var(--navy-light);color:var(--white);padding:9px 14px;border-radius:8px;font-size:13px;">
+            <option value="">All Categories</option>
+          </select>
+          <button class="btn btn-primary" onclick="openModal('productModal')">
+            ＋ Add Product
+          </button>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Product Name</th>
+            <th>Category</th>
+            <th>Unit Price</th>
+            <th>Cost Price</th>
+            <th>Stock</th>
+            <th>Unit</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="productTableBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     ADD / EDIT PRODUCT MODAL
+     ============================================================ -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Add New Product</h3>
+      <button class="modal-close" onclick="closeModal('productModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Hidden field to track which product is being edited -->
+      <input type="hidden" id="editProductId" value="" />
+
+      <div class="form-grid">
+        <div class="form-group" style="grid-column: 1/-1;">
+          <label>Product Name *</label>
+          <input type="text" id="pName" placeholder="e.g. Basmati Rice 25kg" required />
+        </div>
+        <div class="form-group">
+          <label>Category *</label>
+          <select id="pCategory">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Unit Type</label>
+          <select id="pUnit">
+            <option>piece</option><option>bag</option><option>box</option>
+            <option>tin</option><option>case</option><option>kg</option>
+            <option>litre</option><option>pack</option><option>ream</option>
+            <option>can</option><option>bottle</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Selling Price (₹) *</label>
+          <input type="number" id="pUnitPrice" placeholder="0.00" min="0" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label>Cost Price (₹) *</label>
+          <input type="number" id="pCostPrice" placeholder="0.00" min="0" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label>Opening Stock Qty</label>
+          <input type="number" id="pStock" placeholder="0" min="0" />
+        </div>
+        <div class="form-group">
+          <label>Reorder Level</label>
+          <input type="number" id="pReorder" placeholder="10" min="0" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('productModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProduct()">💾 Save Product</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+/* ── Products Page Logic ── */
+
+// ---- Populate category dropdowns ----
+function populateCategoryDropdowns() {
+  const selects = [
+    document.getElementById('categoryFilter'),
+    document.getElementById('pCategory')
+  ];
+
+  DB.categories.forEach(cat => {
+    selects.forEach(sel => {
+      if (!sel) return;
+      const opt = document.createElement('option');
+      opt.value = cat.id;
+      opt.textContent = cat.name;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+// ---- Render product table ----
+function renderProducts(filterText = '', filterCat = '') {
+  const tbody = document.getElementById('productTableBody');
+  let products = DB.products;
+
+  // Apply text filter
+  if (filterText) {
+    products = products.filter(p =>
+      p.name.toLowerCase().includes(filterText.toLowerCase())
+    );
+  }
+
+  // Apply category filter
+  if (filterCat) {
+    products = products.filter(p => p.categoryId === parseInt(filterCat));
+  }
+
+  if (products.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:28px;">No products found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = products.map(p => `
+    <tr>
+      <td class="table-id">#${p.id}</td>
+      <td><strong>${p.name}</strong></td>
+      <td>${getCategoryName(p.categoryId)}</td>
+      <td>${formatCurrency(p.unitPrice)}</td>
+      <td style="color:var(--muted);">${formatCurrency(p.costPrice)}</td>
+      <td>${p.stock} <span style="color:var(--muted);font-size:12px;">${p.unit}</span></td>
+      <td style="color:var(--muted);">${p.unit}</td>
+      <td>${stockBadge(p.stock, p.reorder)}</td>
+      <td>
+        <button class="btn btn-edit btn-sm" onclick="editProduct(${p.id})">✏️ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})" style="margin-left:6px;">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ---- Save product (Create or Update) ----
+function saveProduct() {
+  const editId = document.getElementById('editProductId').value;
+
+  // Read form values
+  const name      = document.getElementById('pName').value.trim();
+  const catId     = parseInt(document.getElementById('pCategory').value);
+  const unitPrice = parseFloat(document.getElementById('pUnitPrice').value);
+  const costPrice = parseFloat(document.getElementById('pCostPrice').value);
+  const unit      = document.getElementById('pUnit').value;
+  const stock     = parseInt(document.getElementById('pStock').value) || 0;
+  const reorder   = parseInt(document.getElementById('pReorder').value) || 10;
+
+  // Basic validation
+  if (!name || !unitPrice || !costPrice) {
+    showAlert('Please fill all required fields.', 'error');
+    return;
+  }
+
+  if (editId) {
+    // ---- UPDATE existing product ----
+    // SQL equivalent: UPDATE products SET ... WHERE product_id = editId
+    const idx = DB.products.findIndex(p => p.id === parseInt(editId));
+    if (idx !== -1) {
+      DB.products[idx] = { ...DB.products[idx], name, categoryId: catId, unitPrice, costPrice, unit, stock, reorder };
+      showAlert('Product updated successfully!');
+    }
+  } else {
+    // ---- CREATE new product ----
+    // SQL equivalent: INSERT INTO products (...) VALUES (...)
+    DB.products.push({
+      id: DB.nextId.products++,
+      name, categoryId: catId, unitPrice, costPrice, unit, stock, reorder
+    });
+    showAlert('Product added successfully!');
+  }
+
+  closeModal('productModal');
+  renderProducts();
+}
+
+// ---- Load product into form for editing ----
+function editProduct(id) {
+  const p = DB.products.find(p => p.id === id);
+  if (!p) return;
+
+  // Populate form fields
+  document.getElementById('editProductId').value  = p.id;
+  document.getElementById('pName').value          = p.name;
+  document.getElementById('pCategory').value      = p.categoryId;
+  document.getElementById('pUnitPrice').value     = p.unitPrice;
+  document.getElementById('pCostPrice').value     = p.costPrice;
+  document.getElementById('pUnit').value          = p.unit;
+  document.getElementById('pStock').value         = p.stock;
+  document.getElementById('pReorder').value       = p.reorder;
+  document.getElementById('modalTitle').textContent = 'Edit Product';
+
+  openModal('productModal');
+}
+
+// ---- Delete product ----
+function deleteProduct(id) {
+  // SQL equivalent: DELETE FROM products WHERE product_id = id
+  if (!confirm('Are you sure you want to delete this product?')) return;
+  const idx = DB.products.findIndex(p => p.id === id);
+  if (idx !== -1) {
+    DB.products.splice(idx, 1);
+    showAlert('Product deleted.');
+    renderProducts();
+  }
+}
+
+// ---- Reset modal when opening for Add ----
+document.getElementById('productModal').querySelector('button[onclick="openModal(\'productModal\')"]');
+document.querySelector('[onclick="openModal(\'productModal\')"]')?.addEventListener('click', () => {
+  document.getElementById('editProductId').value = '';
+  document.getElementById('modalTitle').textContent = 'Add New Product';
+});
+
+// ---- Search & Filter listeners ----
+document.getElementById('productSearch').addEventListener('input', e => {
+  renderProducts(e.target.value, document.getElementById('categoryFilter').value);
+});
+
+document.getElementById('categoryFilter').addEventListener('change', e => {
+  renderProducts(document.getElementById('productSearch').value, e.target.value);
+});
+
+// ---- Init ----
+document.addEventListener('DOMContentLoaded', () => {
+  populateCategoryDropdowns();
+  renderProducts();
+});
+</script>
+</body>
+</html>

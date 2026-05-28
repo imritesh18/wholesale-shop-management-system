@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory | Wholesale Shop Management</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">🏪</div>
+    <h2>ShopDesk Pro</h2>
+    <small>Wholesale Manager</small>
+  </div>
+  <ul class="sidebar-nav">
+    <li class="nav-label">Main</li>
+    <li><a href="index.html"><span class="nav-icon">📊</span> Dashboard</a></li>
+    <li class="nav-label">Manage</li>
+    <li><a href="products.html"><span class="nav-icon">📦</span> Products</a></li>
+    <li><a href="customers.html"><span class="nav-icon">👥</span> Customers</a></li>
+    <li><a href="inventory.html" class="active"><span class="nav-icon">🗄️</span> Inventory</a></li>
+    <li><a href="billing.html"><span class="nav-icon">🧾</span> Billing</a></li>
+  </ul>
+  <div class="sidebar-footer">v1.0 &nbsp;|&nbsp; MySQL + HTML</div>
+</nav>
+
+<div class="main-content">
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <button class="hamburger" id="hamburger">☰</button>
+      <h1>🗄️ Inventory Management</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="currentDate"></span>
+    </div>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="alert" id="alertBox"></div>
+
+    <!-- STATS -->
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
+      <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info"><h3 id="statInStock">0</h3><p>In Stock</p></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon yellow">⚠️</div>
+        <div class="stat-info"><h3 id="statLow">0</h3><p>Low Stock</p></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">🚫</div>
+        <div class="stat-info"><h3 id="statOut">0</h3><p>Out of Stock</p></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon amber">📦</div>
+        <div class="stat-info"><h3 id="statTotal">0</h3><p>Total Items</p></div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;">
+      <button class="btn btn-primary" id="tabStock" onclick="switchTab('stock')">Stock Status</button>
+      <button class="btn btn-outline" id="tabLog" onclick="switchTab('log')">Stock Log</button>
+    </div>
+
+    <!-- STOCK STATUS TABLE -->
+    <div id="stockView">
+      <div class="table-wrapper">
+        <div class="table-controls">
+          <div><h2 style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--amber);">Current Stock</h2></div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <select id="stockFilter" style="background:var(--navy);border:1px solid var(--navy-light);color:var(--white);padding:9px 14px;border-radius:8px;font-size:13px;">
+              <option value="">All Status</option>
+              <option value="in">In Stock</option>
+              <option value="low">Low Stock</option>
+              <option value="out">Out of Stock</option>
+            </select>
+            <button class="btn btn-primary" onclick="openModal('stockModal')">
+              ➕ Stock Entry
+            </button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Current Stock</th>
+              <th>Reorder Level</th>
+              <th>Unit</th>
+              <th>Stock Bar</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="stockTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- STOCK LOG TABLE -->
+    <div id="logView" style="display:none;">
+      <div class="table-wrapper">
+        <div class="table-controls">
+          <h2 style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--amber);">Inventory Movement Log</h2>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Log #</th>
+              <th>Product</th>
+              <th>Type</th>
+              <th>Qty Change</th>
+              <th>Remarks</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- STOCK ENTRY MODAL -->
+<div class="modal-overlay" id="stockModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>New Stock Entry</h3>
+      <button class="modal-close" onclick="closeModal('stockModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>Product *</label>
+          <select id="sProduct"></select>
+        </div>
+        <div class="form-group">
+          <label>Entry Type *</label>
+          <select id="sType">
+            <option value="Purchase">📦 Purchase (Stock In)</option>
+            <option value="Adjustment">🔧 Adjustment</option>
+            <option value="Return">↩️ Return</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Quantity *</label>
+          <input type="number" id="sQty" placeholder="Enter quantity" min="1" />
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>Remarks</label>
+          <input type="text" id="sRemarks" placeholder="e.g. Purchased from supplier ABC" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('stockModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStockEntry()">💾 Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+/* ── Inventory Page Logic ── */
+
+// Mock inventory log (in-memory)
+const inventoryLog = [
+  { id: 1, productId: 1,  type: 'Purchase',   qty: 100, remarks: 'Initial stock purchase', date: '2024-05-01 09:00' },
+  { id: 2, productId: 2,  type: 'Purchase',   qty: 150, remarks: 'Initial stock purchase', date: '2024-05-01 09:10' },
+  { id: 3, productId: 7,  type: 'Sale',        qty: -5,  remarks: 'Sold via Bill #1',       date: '2024-05-10 14:00' },
+  { id: 4, productId: 9,  type: 'Adjustment',  qty: -20, remarks: 'Stock correction',       date: '2024-05-12 11:00' },
+  { id: 5, productId: 11, type: 'Sale',        qty: -15, remarks: 'Sold via Bill #3',       date: '2024-05-15 10:30' },
+];
+let nextLogId = 6;
+
+function renderStats() {
+  const inStock = DB.products.filter(p => p.stock > p.reorder).length;
+  const low     = DB.products.filter(p => p.stock > 0 && p.stock <= p.reorder).length;
+  const out     = DB.products.filter(p => p.stock === 0).length;
+  document.getElementById('statInStock').textContent = inStock;
+  document.getElementById('statLow').textContent     = low;
+  document.getElementById('statOut').textContent     = out;
+  document.getElementById('statTotal').textContent   = DB.products.length;
+}
+
+function getStockBarClass(stock, reorder) {
+  if (stock === 0)      return 'fill-red';
+  if (stock <= reorder) return 'fill-yellow';
+  return 'fill-green';
+}
+
+function getStockBarWidth(stock, reorder) {
+  const maxDisplay = reorder * 5; // scale bar relative to 5x reorder level
+  return Math.min(100, Math.round((stock / maxDisplay) * 100));
+}
+
+function renderStockTable(filterVal = '') {
+  let products = [...DB.products];
+
+  if (filterVal === 'in')  products = products.filter(p => p.stock > p.reorder);
+  if (filterVal === 'low') products = products.filter(p => p.stock > 0 && p.stock <= p.reorder);
+  if (filterVal === 'out') products = products.filter(p => p.stock === 0);
+
+  const tbody = document.getElementById('stockTableBody');
+  tbody.innerHTML = products.map(p => {
+    const pct = getStockBarWidth(p.stock, p.reorder);
+    const cls = getStockBarClass(p.stock, p.reorder);
+    return `
+    <tr>
+      <td><strong>${p.name}</strong></td>
+      <td>${getCategoryName(p.categoryId)}</td>
+      <td>
+        <span style="font-size:17px;font-weight:600;font-family:'IBM Plex Mono',monospace;">${p.stock}</span>
+      </td>
+      <td style="color:var(--muted);">${p.reorder}</td>
+      <td style="color:var(--muted);">${p.unit}</td>
+      <td>
+        <div class="stock-bar-wrap">
+          <div class="stock-bar">
+            <div class="stock-bar-fill ${cls}" style="width:${pct}%;"></div>
+          </div>
+          <span style="font-size:11px;color:var(--muted);">${pct}%</span>
+        </div>
+      </td>
+      <td>${stockBadge(p.stock, p.reorder)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderLogTable() {
+  const tbody = document.getElementById('logTableBody');
+  const sorted = [...inventoryLog].sort((a, b) => b.id - a.id);
+  tbody.innerHTML = sorted.map(log => {
+    const product = DB.products.find(p => p.id === log.productId);
+    const isPositive = log.qty > 0;
+    const typeColors = { Purchase: 'badge-green', Sale: 'badge-red', Adjustment: 'badge-yellow', Return: 'badge-blue' };
+    return `
+    <tr>
+      <td class="table-id">#${log.id}</td>
+      <td><strong>${product ? product.name : '—'}</strong></td>
+      <td><span class="badge ${typeColors[log.type] || 'badge-amber'}">${log.type}</span></td>
+      <td style="color:${isPositive ? 'var(--green)' : 'var(--red)'};font-weight:600;font-family:'IBM Plex Mono',monospace;">
+        ${isPositive ? '+' : ''}${log.qty}
+      </td>
+      <td style="color:var(--muted);">${log.remarks}</td>
+      <td style="color:var(--muted);">${log.date}</td>
+    </tr>`;
+  }).join('');
+}
+
+function populateProductSelect() {
+  const sel = document.getElementById('sProduct');
+  sel.innerHTML = DB.products.map(p =>
+    `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`
+  ).join('');
+}
+
+function saveStockEntry() {
+  const productId = parseInt(document.getElementById('sProduct').value);
+  const type      = document.getElementById('sType').value;
+  const qty       = parseInt(document.getElementById('sQty').value);
+  const remarks   = document.getElementById('sRemarks').value.trim();
+
+  if (!qty || qty < 1) { showAlert('Enter a valid quantity.', 'error'); return; }
+
+  // Calculate actual qty change (Purchase/Return = positive, Sale = negative)
+  const isNegative = (type === 'Sale');
+  const actualQty  = isNegative ? -Math.abs(qty) : Math.abs(qty);
+
+  // SQL equivalent:
+  //   INSERT INTO inventory_log (product_id, change_type, quantity, remarks) VALUES (...)
+  //   UPDATE products SET stock_qty = stock_qty + actualQty WHERE product_id = productId
+  inventoryLog.push({
+    id: nextLogId++,
+    productId,
+    type,
+    qty: actualQty,
+    remarks: remarks || type + ' entry',
+    date: new Date().toLocaleString('en-IN')
+  });
+
+  const product = DB.products.find(p => p.id === productId);
+  if (product) product.stock = Math.max(0, product.stock + actualQty);
+
+  showAlert('Stock entry saved!');
+  closeModal('stockModal');
+  renderStats();
+  renderStockTable(document.getElementById('stockFilter').value);
+  renderLogTable();
+  populateProductSelect();
+}
+
+function switchTab(tab) {
+  const isStock = tab === 'stock';
+  document.getElementById('stockView').style.display = isStock ? 'block' : 'none';
+  document.getElementById('logView').style.display   = isStock ? 'none'  : 'block';
+  document.getElementById('tabStock').className = 'btn ' + (isStock ? 'btn-primary' : 'btn-outline');
+  document.getElementById('tabLog').className   = 'btn ' + (isStock ? 'btn-outline' : 'btn-primary');
+}
+
+document.getElementById('stockFilter').addEventListener('change', e => renderStockTable(e.target.value));
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderStats();
+  renderStockTable();
+  renderLogTable();
+  populateProductSelect();
+});
+</script>
+</body>
+</html>
