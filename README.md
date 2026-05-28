@@ -8,6 +8,11 @@
 
 ---
 
+## Live Demo
+
+🔗 https://imritesh18.github.io/wholesale-shop-management-system/
+---
+
 ## 📋 Table of Contents
 
 - [About the Project](#about-the-project)
